@@ -5,17 +5,25 @@ and the GSOC project details for the same are present at
 https://summerofcode.withgoogle.com/projects/#6746958066089984
 
 '''
-import urllib.request, urllib.parse, urllib.error, urllib.request, urllib.error, urllib.parse, os
+import urllib.request, urllib.parse, urllib.error, urllib.request, urllib.error, urllib.parse, os, yaml
 from bs4 import BeautifulSoup as bs,Comment
 
-pages_for_exclusion = ['https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Example/Strandbeest']
+with open('config.yml','r') as file:
+	config = yaml.safe_load(file)
 
-user_agent_val ='Generator-for-Offline-Documentation (https://github.com/abshk-jr ; https://github.com/opencax/GSoC/issues/6 ; https://summerofcode.withgoogle.com/projects/#6746958066089984) urllib/3.9.0 [BeautifulSoup/4.9.0]'
+globals().update(config)
 
-url = 'https://en.wikibooks.org/wiki/OpenSCAD_User_Manual'
-url_css = 'https://en.wikipedia.org/w/load.php?debug=false&lang=en&modules=mediawiki.legacy.commonPrint,shared|skins.vector.styles&only=styles&skin=vector&*'
-url_wiki = 'https://en.wikibooks.org'
-url_api = 'https://en.wikibooks.org/w/api.php?action=parse&format=xml&prop=text&page='
+'''
+The line above does the same work as the code given below
+---------------------------------------------------------
+url = config['url']
+url_css = config['url_css']
+url_wiki = config['url_wiki']
+url_api = config['url_api']
+pages_for_exclusion = config['pages_for_exclusion']
+user_agent_val = config['user_agent_val']
+---------------------------------------------------------
+'''
 
 dir_docs = 'openscad_docs'
 dir_imgs =  os.path.join( dir_docs, 'imgs')
@@ -124,14 +132,10 @@ def cleanSoup(soup):
 
 	#The following deletes the Tags which aren't required in the User Manual
 	red_div_cls  = ["printfooter","catlinks","noprint","magnify"]
-	red_span_cls = ["mw-editsection","toctogglespan","noprint"]
 	red_table_cls= ['noprint','ambox']
 	red_input_cls= ['toctogglecheckbox']
 	for cls in red_div_cls: 
 		for tag in soup.findAll('div',{'class':cls}):
-			tag.decompose()
-	for cls in red_span_cls: 
-		for tag in soup.findAll('span',{'class':cls}):
 			tag.decompose()
 	for cls in red_table_cls: 
 		for tag in soup.findAll('table',{'class':cls}): 
@@ -146,30 +150,33 @@ def cleanSoup(soup):
 	comments = soup.findAll(text=lambda text: isinstance(text, Comment))
 	[comment.extract() for comment in comments]
 
-	#The following replaces the redundant Tags with the content present in inside of them
+	#The following replaces the redundant div Tags with the content present in inside of them
 	rep_div_cls = ["mw-highlight"]
-	rep_span_cls= ["toctext","mw-headline"]
 	for kls in rep_div_cls:
 			for tag in soup.findAll('div',kls):
 				tag.replaceWithChildren()
-	for kls in rep_span_cls:
-			for tag in soup.findAll('span',kls):
-				tag.replaceWithChildren()
 	
-	#The following is for the cleaning/removal of some redundant span tags
+	#The following is for the cleaning of some redundant li tags
 	for _ in range(0,7):
 		for tag in soup.findAll('li',{'class':f'toclevel-{_}'}):
 			del tag['class']
 	
+	#The following is for the cleaning/removal of some redundant span tags
 	for tag in soup.findAll('span'):
 		try:
 			if(len(tag.text)==0):
 				tag.decompose()
-			for _ in tag['class']:
-				if(len(_) <= 2):
+			for cls in tag['class']:
+				if(len(cls) <= 2):
 					tag.replaceWithChildren()
-				if('mathml' in _):
+				if('mathml' in cls):
 					tag.decompose()
+				if cls in ['toctext','mw-headline']:
+					tag.replaceWithChildren()
+				if cls in ['mw-editsection','toctogglespan','noprint']:
+					tag.decompose()
+
+
 		except:
 			pass
 
@@ -188,6 +195,16 @@ def getFooter( url, name ):
 	CC-BY-SA-3.0</a>)</footer>''')
 
 	return bs(footer,'html.parser')
+
+def getStyled(soup,title):
+	css_tag = bs('<link rel="stylesheet" href="./styles/style.css">','html.parser')
+	soup.head.append(css_tag)
+	soup.body['class'] = 'mw-body'
+	soup.body['style']=['height:auto']
+	del soup.body.div['class']
+	soup.body.div['id']='bodyContent'
+	h1_tag = bs(f'<h1 class="firstHeading" id="firstHeading">{title}</h1>','html.parser')
+	soup.body.insert(0,h1_tag)
 
 def getPages( url=url,folder=dir_docs ):
 	'''
@@ -212,30 +229,19 @@ def getPages( url=url,folder=dir_docs ):
 		soup = soup.text
 		soup = bs(soup,'html5lib')
 
-		css_tag = bs('<link rel="stylesheet" href="./styles/style.css">','html.parser')
-		soup.head.append(css_tag)
-
-		soup.body['class'] = 'mw-body'
-		del soup.body.div['class']
-		soup.body.div['id']='bodyContent'
-
-		fname = url.split("=")[-1]
-		fname = fname.replace("OpenSCAD_User_Manual/","")
-		fname = fname.split('#')[0]									#for fnames like openscad_docs\FAQ#What_are_those_strange_flickering_artifacts_in_the_preview?.html
-		fname = fname.split("/")[-1]
+		name = url.split("=")[-1]
+		name = name.split("/")[-1].split('#')[0]					#to convert OpenSCAD_User_Manual/String_Functions#str to String_Functions
 
 		title = soup.new_tag("title")								#to add title to the pages
-		title.string = fname.replace("_" , " ")
+		title.string = name.replace("_" , " ")
 		soup.html.head.append(title)
 
-		h1_tag = bs(f'<h1 class="firstHeading" id="firstHeading">{title.string}</h1>','html.parser')
-		soup.body.insert(0,h1_tag)
-				
-		fname = fname + ".html"
-		filepath = os.path.join( folder, fname)
+		name = name + ".html"
+		filepath = os.path.join( folder, name)
 
 		print("Saving: ", filepath)
 
+		getStyled(soup,title.string)
 		cleanSoup(soup)
 		getMaths(soup)
 		getTags(soup)

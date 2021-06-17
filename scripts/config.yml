@@ -1,0 +1,9 @@
+---
+url : 'https://en.wikibooks.org/wiki/OpenSCAD_User_Manual'
+url_css : 'https://en.wikipedia.org/w/load.php?debug=false&lang=en&modules=mediawiki.legacy.commonPrint,shared|skins.vector.styles&only=styles&skin=vector&*'
+url_wiki : 'https://en.wikibooks.org'
+url_api : 'https://en.wikibooks.org/w/api.php?action=parse&format=xml&prop=text&page='
+
+pages_for_exclusion : ['https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Example/Strandbeest']
+
+user_agent_val : 'Generator-for-Offline-Documentation (https://github.com/abshk-jr ; https://github.com/opencax/GSoC/issues/6 ; https://summerofcode.withgoogle.com/projects/#6746958066089984) urllib/3.9.0 [BeautifulSoup/4.9.0]'
