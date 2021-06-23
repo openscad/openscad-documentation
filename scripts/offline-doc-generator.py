@@ -7,8 +7,9 @@ https://summerofcode.withgoogle.com/projects/#6746958066089984
 '''
 import urllib.request, urllib.parse, urllib.error, urllib.request, urllib.error, urllib.parse, os, yaml
 from bs4 import BeautifulSoup as bs,Comment
+import shutil
 
-with open('config.yml','r') as file:
+with open(os.path.join( os.path.dirname(__file__),'config.yml'),'r') as file:
 	config = yaml.safe_load(file)
 
 globals().update(config)
@@ -171,8 +172,10 @@ def cleanSoup(soup):
 					tag.replaceWithChildren()
 				if('mathml' in cls):
 					tag.decompose()
-				if cls in ['toctext','mw-headline']:
+				if cls in ['toctext']:
 					tag.replaceWithChildren()
+				if cls in ['mw-headline']:
+					del tag['class']
 				if cls in ['mw-editsection','toctogglespan','noprint']:
 					tag.decompose()
 
@@ -275,3 +278,4 @@ if(__name__ == '__main__'):
 	print("Total number of pages generated is \t:\t", len(pages)-len(pages_for_exclusion))
 	print("Total number of images generated is \t:\t", len(imgs))
 	print("Total number of math-images generated is:\t", len(maths))
+	shutil.make_archive('docs', 'zip', dir_docs)
