@@ -6,7 +6,7 @@ https://summerofcode.withgoogle.com/projects/#6746958066089984
 
 '''
 import urllib.request, urllib.parse, urllib.error, urllib.request, urllib.error, urllib.parse, os, yaml
-from bs4 import BeautifulSoup as bs,Comment
+from bs4 import BeautifulSoup as bs,Comment, Doctype
 import shutil
 
 with open(os.path.join( os.path.dirname(__file__),'config.yml'),'r') as file:
@@ -95,7 +95,7 @@ def getMaths(soup):
 						urllib.request.install_opener(opener)
 						urllib.request.urlretrieve( img['src'] , savepath )
 						maths.append( mathname )
-					linkurl = os.path.join('.','imgs\maths',mathname)
+					linkurl = os.path.join('.','imgs/maths',mathname).replace('\\','/')
 					img['src'] = linkurl
 					
 		except:
@@ -121,7 +121,7 @@ def getImages(tag):
 		imgs.append(imgpath)
 
 	del tag.img['srcset']
-	imgpath = os.path.join('.', 'imgs', imgname)
+	imgpath = os.path.join('.', 'imgs', imgname).replace('\\','/')
 	tag.img['src'] = imgpath
 	tag['href']= imgpath
 
@@ -200,6 +200,12 @@ def getFooter( url, name ):
 	return bs(footer,'html.parser')
 
 def getStyled(soup,title):
+	tag = Doctype('html')
+	soup.insert(0, tag)
+	soup.html['lang']='en'
+	meta_tag =  soup.new_tag('meta')
+	meta_tag['charset'] = 'UTF-8'
+	soup.head.insert(0,meta_tag)
 	css_tag = bs('<link rel="stylesheet" href="./styles/style.css">','html.parser')
 	soup.head.append(css_tag)
 	soup.body['class'] = 'mw-body'
