@@ -5,7 +5,7 @@ and the GSOC project details for the same are present at
 https://summerofcode.withgoogle.com/projects/#6746958066089984
 
 '''
-import urllib.request, urllib.parse, urllib.error, urllib.request, urllib.error, urllib.parse, os, yaml
+import urllib.request, urllib.parse, os, yaml
 from bs4 import BeautifulSoup as bs,Comment, Doctype
 import shutil
 
@@ -42,7 +42,7 @@ pages += pages_for_exclusion
 imgs  =[]
 maths =[]
 
-def getUrl(url):
+def getParsedUrl(url):
 	'''
 	This function generates the complete url after getting urls form src
 	/wiki/OpenSCAD_User_Manual get converted to https://en.wikibooks.org/wiki/OpenSCAD_User_Manual
@@ -52,7 +52,7 @@ def getUrl(url):
 		url = 'https:'+url
 	elif not url.startswith( url_wiki ):
 		url = urllib.parse.urljoin( url_wiki, url[0]=="/" and url[1:] or url)
-	return url
+	return urllib.parse.urlparse(url)
 
 def getTags(soup):
 	'''
@@ -64,13 +64,14 @@ def getTags(soup):
 		href= a.get('href')
 		if href:
 			if href[0] != '#':
-				href = getUrl(href)
-			if (href.startswith('/wiki/OpenSCAD_User_Manual') or href.startswith(url_wiki + '/wiki/OpenSCAD_User_Manual')):
-				newhref = (href.replace('#', '.html#') if '#' in href else href+'.html').split('/')[-1]
-				
-				if 'Print_version.html' not in newhref:
-					getPages(url=href)
-					a['href']= newhref
+				hrefparse = getParsedUrl(href)
+				hrefurl=hrefparse.geturl()
+				if hrefparse.path.startswith('/wiki/OpenSCAD_User_Manual'):
+					newhref = (hrefurl.replace('#', '.html#') if hrefparse.query else hrefurl+'.html').split('/')[-1]
+					
+					if 'Print_version.html' not in newhref:
+						getPages(url=hrefurl)
+						a['href']= newhref
 
 			if a.img :
 				getImages( a )
@@ -107,8 +108,8 @@ def getImages(tag):
 	and saves them to the directory /openscad_docs/imgs
 
 	'''
-	src = getUrl( tag.img['src'] )
-	imgname = src.split("/")[-1]
+	srcparse = getParsedUrl( tag.img['src'] )
+	imgname = srcparse.path.split("/")[-1]
 	imgname = imgname.replace('%','_')
 	imgpath = os.path.join( dir_imgs, imgname)
 
@@ -117,7 +118,7 @@ def getImages(tag):
 		opener = urllib.request.build_opener()
 		opener.addheaders = [('User-Agent',user_agent_val)]
 		urllib.request.install_opener(opener)
-		urllib.request.urlretrieve(src , imgpath)
+		urllib.request.urlretrieve(srcparse.geturl() , imgpath)
 		imgs.append(imgpath)
 
 	del tag.img['srcset']
@@ -132,18 +133,12 @@ def cleanSoup(soup):
 	'''
 
 	#The following deletes the Tags which aren't required in the User Manual
-	red_div_cls  = ["printfooter","catlinks","noprint","magnify"]
-	red_table_cls= ['noprint','ambox']
-	red_input_cls= ['toctogglecheckbox']
-	for cls in red_div_cls: 
-		for tag in soup.findAll('div',{'class':cls}):
-			tag.decompose()
-	for cls in red_table_cls: 
-		for tag in soup.findAll('table',{'class':cls}): 
-			tag.decompose()
-	for cls in red_input_cls: 
-		for tag in soup.findAll('input',{'class':cls}):
-			tag.decompose()
+	red_dict = {'div' : ["printfooter","catlinks","noprint","magnify"], 'table' : ['noprint','ambox'], 'input' : ['toctogglecheckbox']}
+	for tag,cls_list in red_dict.items():
+		for cls in cls_list: 
+			for tag in soup.findAll(tag,{'class':cls}):
+				tag.decompose()
+
 	for tag in soup.findAll('style'):
 		tag.decompose()
 
@@ -170,13 +165,11 @@ def cleanSoup(soup):
 			for cls in tag['class']:
 				if(len(cls) <= 2):
 					tag.replaceWithChildren()
-				if('mathml' in cls):
-					tag.decompose()
-				if cls in ['toctext']:
+				elif cls in ['toctext']:
 					tag.replaceWithChildren()
-				if cls in ['mw-headline']:
+				elif cls in ['mw-headline']:
 					del tag['class']
-				if cls in ['mw-editsection','toctogglespan','noprint']:
+				elif 'mathml' in cls or cls in ['mw-editsection','toctogglespan','noprint']:
 					tag.decompose()
 
 
@@ -223,7 +216,6 @@ def getPages( url=url,folder=dir_docs ):
 	version of the page and save it under the directory /openscad_docs
 	
 	'''
-	url = getUrl(url)
 	if url.split("#")[0] not in pages:
 		pages.append( url.split("#")[0] )							#add the url to the `pages` list so that they don't get downloaded again
 		wiki_url = url
@@ -234,7 +226,7 @@ def getPages( url=url,folder=dir_docs ):
 		request.add_header('User-Agent',user_agent_val)
 		response = urllib.request.urlopen(request)
 		xml = response.read()
-		soup = bs(xml, 'lxml')
+		soup = bs(xml, 'html.parser')
 		soup = soup.text
 		soup = bs(soup,'html5lib')
 
