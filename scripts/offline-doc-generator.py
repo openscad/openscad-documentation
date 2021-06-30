@@ -226,7 +226,7 @@ def getPages( url=url,folder=dir_docs ):
 		request.add_header('User-Agent',user_agent_val)
 		response = urllib.request.urlopen(request)
 		xml = response.read()
-		soup = bs(xml, 'lxml')
+		soup = bs(xml, 'html.parser')
 		soup = soup.text
 		soup = bs(soup,'html5lib')
 
