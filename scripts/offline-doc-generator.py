@@ -317,7 +317,7 @@ if(__name__ == '__main__'):
     print("Total number of pages generated is \t:\t", len(pages)-len(pages_for_exclusion))
     print("Total number of images generated is \t:\t", len(imgs))
     print("Total number of math-images generated is:\t", len(maths))
-    shutil.make_archive('docs', 'zip', dir_docs)
+    shutil.make_archive('Generated-Offline-Manual', 'zip', dir_docs)
 
     getPdf()
     files=os.listdir(os.path.join( os.getcwd(), dir_pdfs))
@@ -326,6 +326,6 @@ if(__name__ == '__main__'):
             file_pdf = file.replace('.html','.pdf')
             pdfkit.from_file(f'{os.path.join( os.getcwd(), dir_pdfs)}/{file}', f'{os.path.join( os.getcwd(), dir_docpdfs)}/{file_pdf}' , options=options)
 
-    shutil.make_archive('pdf', 'zip', dir_docpdfs)
+    shutil.make_archive('PDF-Offline-Manual', 'zip', dir_docpdfs)
     shutil.rmtree(dir_pdfs)
     shutil.rmtree(dir_docpdfs)

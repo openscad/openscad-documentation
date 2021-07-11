@@ -1,4 +1,4 @@
-name: pdf
+name: Zipped Release Complete
 
 on:
   workflow_dispatch:
@@ -30,8 +30,8 @@ jobs:
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/PDF-Offline-Manual.zip
-          asset_name: PDF-Offline-Manual.zip
+          file: build/*.zip
           tag: Docs-Release
           overwrite: true
-          body: "This is a release containing the PDF version of the Docs Generated using Github Actions."
+          file_glob: true
+          body: "This is a release containing both the zip files (one for the Docs Generated, another containing the Generated PDFs) using Github Actions."
