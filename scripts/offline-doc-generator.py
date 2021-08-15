@@ -55,7 +55,7 @@ def getParsedUrl(url):
         url = urllib.parse.urljoin( url_wiki, url[0]=="/" and url[1:] or url)
     return urllib.parse.urlparse(url)
 
-def getTags(soup,pdf):
+def getTags(soup,pdf,cs=False):
     '''
     This function handles the different tags present in the HTML document
     e.x. updating the <a> tags with the new links, or handling the <img> tags
@@ -65,15 +65,18 @@ def getTags(soup,pdf):
         href= a.get('href')
         if href:
             if href[0] != '#':
+                if cs:
+                    href = href.replace('w/index.php?title=','wiki/')
                 hrefparse = getParsedUrl(href)
                 hrefurl=hrefparse.geturl()
                 if pdf:
                     a['href']= hrefurl
                 elif hrefparse.path.startswith('/wiki/OpenSCAD_User_Manual'):
-                    newhref = (hrefurl.replace('#', '.html#') if hrefparse.query else hrefurl+'.html').split('/')[-1]
+                    newhref = (hrefurl.replace('#', '.html#') if '#' in hrefurl else hrefurl+'.html').split('/')[-1]
                     
                     if 'Print_version.html' not in newhref:
-                        getPages(url=hrefurl)
+                        if not cs:
+                            getPages(url=hrefurl)
                         a['href']= newhref
 
             if a.img :
@@ -280,26 +283,26 @@ def getPages( url=url,folder=dir_docs,pdf=False ):
         getStyled(soup,title.string)
         cleanSoup(soup,pdf)
         getMaths(soup,pdf)
-        getTags(soup,pdf)
+        getTags(soup,pdf,False)
 
         soup.body.append( getFooter( wiki_url, title.text ))
 
         open(filepath, "w", encoding="utf-8").write( str(soup) )
 
 
-def getCSS():
+def getCSS(url = url_css, css_name = 'style.css'):
     '''
     This function runs once after the HTML files have been downloaded
     and downloads the CSS given at https://www.mediawiki.org/wiki/API:Styling_content
     and saves it to openscad_docs/styles
     
     '''
-    request = urllib.request.Request(url_css)
+    request = urllib.request.Request(url)
     request.add_header('User-Agent',user_agent_val)
     response = urllib.request.urlopen(request)
     css_soup = response.read()
     css = bs(css_soup, 'html5lib')
-    csspath = os.path.join( dir_styles, 'style.css')
+    csspath = os.path.join( dir_styles, css_name)
     open( csspath, "w" , encoding="utf-8").write(css.body.text)
 
 def getPdf():
@@ -308,8 +311,29 @@ def getPdf():
     if os.path.exists(f'{os.path.join( os.getcwd(), dir_pdfs)}/styles'):shutil.rmtree(f'{os.path.join( os.getcwd(), dir_pdfs)}/styles')
     shutil.copytree(f'{os.path.join( os.getcwd(), dir_docs)}/styles', f'{os.path.join( os.getcwd(), dir_pdfs)}/styles')
 
+def cheatSheet():
+    '''
+    This function is run once to download the Cheat Sheet from
+    https://openscad.org/cheatsheet/ and the WikiBooks links 
+    are changed to now redirect to the Manual saved offline
 
-    
+    '''
+    request = urllib.request.Request(cheatsheet_url)
+    response = urllib.request.urlopen(request)
+    soup = response.read()
+    soup = bs(soup,'lxml')
+    for css in soup.find_all("link",href=True):
+        css_name = css.attrs.get("href")
+        url_css = urllib.parse.urljoin(cheatsheet_url, css_name) 
+        if '.css' in url_css:
+            getCSS(url_css,css_name.split('/')[-1])
+            css['href'] = css['href'].replace('css/','styles/')
+    getTags(soup,False,True)
+    filepath = os.path.join( dir_docs , 'CheatSheet.html')
+    open(filepath, "w", encoding="utf-8").write( str(soup) )
+
+
+
 if(__name__ == '__main__'):
     print(f'Started Offline Generator.py\nNow downloading the User-Manual from {url}')
     getPages(url)
@@ -317,6 +341,7 @@ if(__name__ == '__main__'):
     print("Total number of pages generated is \t:\t", len(pages)-len(pages_for_exclusion))
     print("Total number of images generated is \t:\t", len(imgs))
     print("Total number of math-images generated is:\t", len(maths))
+    cheatSheet()
     shutil.make_archive('Generated-Offline-Manual', 'zip', dir_docs)
 
     getPdf()
