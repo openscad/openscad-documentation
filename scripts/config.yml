@@ -10,6 +10,8 @@ user_agent_val : Generator-for-Offline-Documentation (https://github.com/abshk-j
 
 url_print : [https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Print_version,https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/The_OpenSCAD_Language]
 
+cheatsheet_url : https://openscad.org/cheatsheet/
+
 options :
   enable-local-file-access: null
   --keep-relative-links: ''
